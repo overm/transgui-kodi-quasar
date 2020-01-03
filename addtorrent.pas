@@ -26,7 +26,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Spin, VarGrid, Grids, ButtonPanel, ExtCtrls, Buttons, BaseForm,
-  varlist, fpjson, StrUtils, DateUtils, LazUTF8;
+  varlist, fpjson, StrUtils, DateUtils, LazUTF8, simpleinternet, xquery, fphttpclient;
 
 resourcestring
   SSize = 'Size';
@@ -40,29 +40,40 @@ type
 
   TAddTorrentForm = class(TBaseForm)
     DelButton: TBitBtn;
+    btRefresh: TButton;
     btSelectAll: TButton;
     btSelectNone: TButton;
     btBrowse: TButton;
     Buttons: TButtonPanel;
     cbStartTorrent: TCheckBox;
     cbDestFolder: TComboBox;
+    cbFilmSearch: TCheckBox;
     edSaveAs: TEdit;
     edExtension: TEdit;
+    edFilmQuery: TEdit;
     gbSaveAs: TGroupBox;
     gbContents: TGroupBox;
     edPeerLimit: TSpinEdit;
     DiskSpaceTimer: TTimer;
+    gbFilmSearch: TGroupBox;
+    imFilmSearch: TImage;
+    txFilmSearch: TLabel;
     txSaveAs: TLabel;
     txSaveAs1: TLabel;
+    txFilmSearchYear: TLabel;
+    txFilmSearchName: TLabel;
     txSize: TLabel;
     txDiskSpace: TLabel;
     txPeerLimit: TLabel;
     lvFiles: TVarGrid;
     txDestFolder: TLabel;
     procedure btBrowseClick(Sender: TObject);
+    procedure btRefreshClick(Sender: TObject);
     procedure btSelectAllClick(Sender: TObject);
     procedure btSelectNoneClick(Sender: TObject);
+    procedure ButtonsClick(Sender: TObject);
     procedure cbDestFolderChange(Sender: TObject);
+    procedure cbFilmSearchChange(Sender: TObject);
     procedure cbStartTorrentChange(Sender: TObject);
     procedure DelButtonClick(Sender: TObject);
     procedure DiskSpaceTimerTimer(Sender: TObject);
@@ -75,7 +86,9 @@ type
     function  IsFileTemplate(filename:string; cntE : integer; e: array of string):boolean;
     function  CorrectPath (path: string): string;
     procedure DeleteDirs(maxdel : Integer);
-
+    procedure txFilmSearchNameClick(Sender: TObject);
+    procedure txSaveAs1Click(Sender: TObject);
+    function GetFullDestFolder(): string;
   private
     FDiskSpaceCaption: string;
     FTree: TFilesTree;
@@ -84,6 +97,7 @@ type
   public
     OrigCaption: string;
     Extension : string;
+    FFilmUrl: string;
     property FilesTree: TFilesTree read FTree;
   end;
 
@@ -911,6 +925,17 @@ begin
     end;
 end;
 
+procedure TAddTorrentForm.txFilmSearchNameClick(Sender: TObject);
+begin
+  if FFilmUrl <> '' then
+    OpenURL(FFilmUrl);
+end;
+
+procedure TAddTorrentForm.txSaveAs1Click(Sender: TObject);
+begin
+
+end;
+
 procedure TAddTorrentForm.OKButtonClick(Sender: TObject);
 var
   s,e : string;
@@ -998,9 +1023,113 @@ begin
   end;
 end;
 
+
+procedure TAddTorrentForm.btRefreshClick(Sender: TObject);
+var link: IXQValue;
+  i: integer;
+  url, seacher: string;
+  imageStream : TMemoryStream;
+  cli: TFPHTTPClient;
+
+begin
+  i:=0;
+  url:='';
+  FFilmUrl:='';
+  seacher:='';
+
+  //set user agent (fails without it)
+  //defaultInternetConfiguration.userAgent:='curl/7.21.0 (i686-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18';
+
+  try
+    for link in  process('https://www.google.com/search?q=site:www.themoviedb.org+'+ReplaceStr(ReplaceStr(edFilmQuery.Text, ' ', '+'), '&', '%26'),
+        '//a[contains(@href,''https://www.themoviedb.org/movie/'')]/@href') do
+      begin
+        seacher:='G';
+        url:=link.toString;
+        url:=Copy(url, Pos('https://www.themoviedb.org/movie', url), Pos('-', url) - Pos('https://www.themoviedb.org/movie', url));
+        break;
+      end;
+  except
+//          MessageDlg(SInvalidName, mtError, [mbOK], 0);
+  end;
+
+  try
+  if url = '' then
+    for link in  process('https://yandex.ru/search/?site=www.themoviedb.org&text='+ReplaceStr(edFilmQuery.Text, '&', '%26'), '//*[@class=''content__left'']//a[starts-with(@href,''https://www.themoviedb.org/movie/'')]/@href') do
+    begin
+      seacher:='Y';
+      url:=link.toString;
+      break;
+    end;
+  except
+  end;
+
+
+    if url <> '' then
+     begin
+       txFilmSearchName.Cursor:= TCursor(-21);
+       txFilmSearchName.Font.Color:= clBlue;
+       txFilmSearchName.Font.Underline := true;
+       txFilmSearchName.Hint:=url;
+       i:=0;
+       FFilmUrl:=url;
+       for link in  process(url, '//*[@id=''main'']//*[@class=''title'']/h2/a/text() | //*[@id=''main'']//*[@class=''title'']/h2/a/span | /html/head/meta[@property=''og:image''][1]/@content') do
+         begin
+            if i = 1 then
+              txFilmSearchName.Caption:=seacher +'  Original name: ' + link.toString;
+            if i = 2 then
+              txFilmSearchYear.Caption:='Year: ' + ReplaceStr(ReplaceStr(link.toString, ')', ''), '(', '');
+            if i = 0 then
+            begin
+              try
+
+                imageStream := TMemoryStream.Create;
+
+                cli := TFPHTTPClient.Create(nil);
+                cli.AddHeader('User-Agent','Mozilla/5.0 (compatible; fpweb)');
+                cli.SimpleGet(ReplaceText(link.toString, 'https://', 'http://'), imageStream);
+                imageStream.Position:=0;
+                imFilmSearch.Picture.LoadFromStream(imageStream);
+              except
+              end;
+            end;
+            if i >= 2 then
+              break;
+            i:=i+1;
+         end;
+     end
+   else
+   begin
+     txFilmSearchName.Cursor:= TCursor(0);
+     txFilmSearchName.Font.Color:= clBlack;
+     txFilmSearchName.Font.Underline := false;
+     txFilmSearchName.Hint:='';
+     txFilmSearchName.Caption:='Original name: ';
+     txFilmSearchYear.Caption:='Year: ';
+
+
+
+
+   end;
+end;
+
+function TAddTorrentForm.GetFullDestFolder(): string;
+begin
+  if (lvFiles.Items.Count <= 1) and (MainForm.FCreateFolder) then
+    Result:=cbDestFolder.Text + '/' + edSaveAs.Text
+  else
+    Result:=cbDestFolder.Text;
+end;
+
+
 procedure TAddTorrentForm.btSelectNoneClick(Sender: TObject);
 begin
   FTree.SetStateAll(cbUnchecked);
+end;
+
+procedure TAddTorrentForm.ButtonsClick(Sender: TObject);
+begin
+
 end;
 
 procedure TAddTorrentForm.cbDestFolderChange(Sender: TObject);
@@ -1020,6 +1149,10 @@ begin
   DiskSpaceTimer.Enabled:=True;
 end;
 
+procedure TAddTorrentForm.cbFilmSearchChange(Sender: TObject);
+begin
+     gbFilmSearch.Enabled:=TCheckBox(Sender).Checked;
+end;
 procedure TAddTorrentForm.cbStartTorrentChange(Sender: TObject);
 begin
     Ini.WriteBool('Interface', 'StartTorrentOnAdd', cbStartTorrent.Checked);

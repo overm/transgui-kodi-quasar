@@ -1,6 +1,6 @@
 inherited AddTorrentForm: TAddTorrentForm
   Left = 494
-  Height = 457
+  Height = 540
   Top = 276
   Width = 508
   HorzScrollBar.Page = 505
@@ -9,7 +9,7 @@ inherited AddTorrentForm: TAddTorrentForm
   AutoSize = True
   BorderIcons = [biSystemMenu]
   Caption = 'Add new torrent'
-  ClientHeight = 457
+  ClientHeight = 540
   ClientWidth = 508
   Constraints.MinHeight = 300
   Constraints.MinWidth = 470
@@ -122,6 +122,7 @@ inherited AddTorrentForm: TAddTorrentForm
       ParentColor = False
       ParentShowHint = False
       ShowHint = True
+      OnClick = txSaveAs1Click
     end
     object DelButton: TBitBtn
       Left = 351
@@ -300,25 +301,105 @@ inherited AddTorrentForm: TAddTorrentForm
     CancelButton.DefaultCaption = True
     TabOrder = 2
     Spacing = 8
+    OnClick = ButtonsClick
     ShowButtons = [pbOK, pbCancel]
     ShowBevel = False
   end
   object cbStartTorrent: TCheckBox[3]
-    Left = 24
+    Left = 16
     Height = 19
-    Top = 428
+    Top = 512
     Width = 203
     Anchors = [akLeft, akRight, akBottom]
     Caption = 'Start torrent'
     Checked = True
     OnChange = cbStartTorrentChange
     State = cbChecked
-    TabOrder = 3
+    TabOrder = 5
   end
-  object DiskSpaceTimer: TTimer[4]
+  object gbFilmSearch: TGroupBox[4]
+    Left = 8
+    Height = 88
+    Top = 192
+    Width = 481
+    Align = alTop
+    BorderSpacing.Left = 8
+    BorderSpacing.Top = 8
+    BorderSpacing.Right = 8
+    Caption = '                                                           '
+    ClientHeight = 68
+    ClientWidth = 477
+    TabOrder = 3
+    object txFilmSearch: TLabel
+      Left = 10
+      Height = 15
+      Top = 0
+      Width = 169
+      Caption = 'Search query in themoviedb.org'
+      ParentColor = False
+    end
+    object btRefresh: TButton
+      Left = 309
+      Height = 23
+      Top = 24
+      Width = 91
+      Anchors = [akTop, akRight]
+      Caption = 'Refresh'
+      OnClick = btRefreshClick
+      TabOrder = 0
+    end
+    object txFilmSearchYear: TLabel
+      Left = 10
+      Height = 15
+      Top = 48
+      Width = 25
+      Caption = 'Year:'
+      ParentColor = False
+    end
+    object edFilmQuery: TEdit
+      Left = 10
+      Height = 23
+      Top = 24
+      Width = 294
+      Anchors = [akTop, akLeft, akRight]
+      OnChange = edSaveAsChange
+      TabOrder = 1
+    end
+    object txFilmSearchName: TLabel
+      Left = 64
+      Height = 15
+      Top = 48
+      Width = 84
+      Caption = 'Original name:  '
+      ParentColor = False
+      ParentShowHint = False
+      ShowHint = True
+      OnClick = txFilmSearchNameClick
+    end
+    object imFilmSearch: TImage
+      Left = 408
+      Height = 76
+      Top = -8
+      Width = 56
+      Anchors = [akTop, akRight]
+      Stretch = True
+    end
+  end
+  object cbFilmSearch: TCheckBox[4]
+    Left = 16
+    Height = 19
+    Top = 189
+    Width = 167
+    Caption = 'Film searching for KODI MC'
+    Checked = True
+    OnChange = cbFilmSearchChange
+    State = cbChecked
+    TabOrder = 4
+  end
+  object DiskSpaceTimer: TTimer[5]
     Enabled = False
     OnTimer = DiskSpaceTimerTimer
-    left = 44
-    top = 248
+    left = 16
+    top = 456
   end
 end

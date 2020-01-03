@@ -35,7 +35,7 @@ uses
   LazFileUtils, LazUTF8, StringToVK, passwcon, GContnrs,lineinfo;
 
 const
-  AppName = 'Transmission Remote GUI';
+  AppName = 'Transmission Remote GUI KODI mode';
   AppVersion = '5.18.0';
 
 resourcestring
@@ -761,6 +761,7 @@ type
     function SelectTorrent(TorrentId, TimeOut: integer): integer;
     procedure OpenCurrentTorrent(OpenFolderOnly: boolean; UserDef: boolean=false);
   public
+    FCreateFolder: boolean;
     procedure FillTorrentsList(list: TJSONArray);
     procedure FillPeersList(list: TJSONArray);
     procedure FillFilesList(ATorrentId: integer; list, priorities, wanted: TJSONArray; const DownloadDir: WideString);
@@ -777,6 +778,7 @@ type
     function SelectRemoteFolder(const CurFolder, DialogTitle: string): string;
     procedure ConnectionSettingsChanged(const ActiveConnection: string; ForceReconnect: boolean);
     procedure StatusBarSizes;
+    function PubMapRemoteToLocal(const RemotePath: string): string;
 private
     procedure _onException(Sender: TObject; E: Exception);
 end;
@@ -1691,6 +1693,8 @@ begin
   acFolderGrouping.Checked:=Ini.ReadBool('Interface', 'FolderGrouping', True);
   acTrackerGrouping.Checked:=Ini.ReadBool('Interface', 'TrackerGrouping', True);
   FLinksFromClipboard:=Ini.ReadBool('Interface', 'LinksFromClipboard', True);
+  FCreateFolder:=Ini.ReadBool('Interface', 'CreateFolder', True);
+
   Application.OnActivate:=@FormActivate;
   Application.OnException:=@ApplicationPropertiesException;
 
@@ -2155,6 +2159,7 @@ begin
     cbShowAddTorrentWindow.Checked:=Ini.ReadBool('Interface', 'ShowAddTorrentWindow', True);
     cbDeleteTorrentFile.Checked:=Ini.ReadBool('Interface', 'DeleteTorrentFile', False);
     cbLinksFromClipboard.Checked:=Ini.ReadBool('Interface', 'LinksFromClipboard', True);
+    cbCreateFolder.Checked:=Ini.ReadBool('Interface', 'CreateFolder', True);
     edIntfScale.Value:=Ini.ReadInteger('Interface', 'Scaling', 100);
     cbCheckNewVersion.Checked:=Ini.ReadBool('Interface', 'CheckNewVersion', False);
     edCheckVersionDays.Value:=Ini.ReadInteger('Interface', 'CheckNewVersionDays', 5);
@@ -2186,7 +2191,9 @@ begin
       Ini.WriteBool('Interface', 'ShowAddTorrentWindow', cbShowAddTorrentWindow.Checked);
       Ini.WriteBool('Interface', 'DeleteTorrentFile', cbDeleteTorrentFile.Checked);
       Ini.WriteBool('Interface', 'LinksFromClipboard', cbLinksFromClipboard.Checked);
+      Ini.WriteBool('Interface', 'CreateFolder', cbCreateFolder.Checked);
       FLinksFromClipboard:=cbLinksFromClipboard.Checked;
+      FCreateFolder:=cbCreateFolder.Checked;
 
       Ini.WriteInteger('Interface', 'Scaling', edIntfScale.Value);
 
@@ -2551,11 +2558,12 @@ var
   req, args: TJSONObject;
   id: integer;
   t, files: TJSONArray;
-  i: integer;
+  i, j: integer;
   fs: TFileStreamUTF8;
-  s, ss, OldDownloadDir, IniSec, OldName: string;
+  s, ss, OldDownloadDir, IniSec, OldName, stKODIPath: string;
   ok: boolean;
   pFD:FolderData;
+  lstKodiUrl: TStringList;
 begin
   Result:=False;
   if not RpcObj.Connected and not RpcObj.Connecting then
@@ -2682,6 +2690,24 @@ begin
           OldName:=UTF8Encode(t.Objects[0].Strings['name']);
           edSaveAs.Caption:=OldName;
           edSaveAs.Caption := ExcludeInvalidChar(edSaveAs.Caption); // petrov - Exclude prohibited characters
+          //searching data
+          begin
+            j:=0;
+            for i:=0 to Length(edSaveAs.Text) - 1 do
+              if ord(edSaveAs.Text[i+1]) in [ord('0')..ord('9')] then
+                 begin
+                   j:=j+1;
+                   if j >= 4 then
+                   begin
+                     edFilmQuery.Text:= LeftBStr(edSaveAs.Text, i+1);
+                     break;
+                   end;
+                 end
+                 else j:=0;
+            if edFilmQuery.Text = '' then
+               edFilmQuery.Text:= edSaveAs.Text;
+            btRefreshClick(nil);
+          end;
 
           if RpcObj.RPCVersion < 15 then begin
             edSaveAs.Enabled:=False;
@@ -2727,13 +2753,15 @@ begin
           AppBusy;
           Self.Update;
 
-          if OldDownloadDir <> cbDestFolder.Text then begin
+          if OldDownloadDir <> GetFullDestFolder() then begin
             TorrentAction(id, 'torrent-remove');
             id:=0;
             args:=TJSONObject.Create;
             args.Add('paused', TJSONIntegerNumber.Create(1));
             args.Add('peer-limit', TJSONIntegerNumber.Create(edPeerLimit.Value));
-            args.Add('download-dir', TJSONString.Create(UTF8Decode(cbDestFolder.Text)));
+
+            args.Add('download-dir', TJSONString.Create((GetFullDestFolder()))); // Lazarus 1.4.4
+
             id:=_AddTorrent(args);
             if id = 0 then
               exit;
@@ -2811,6 +2839,17 @@ begin
 
           Ini.WriteInteger(IniSec, 'PeerLimit', edPeerLimit.Value);
           SaveDownloadDirs(cbDestFolder, 'LastDownloadDir');
+            if (cbFilmSearch.Checked) and (FFilmUrl <> '') then
+          begin
+            lstKodiUrl:= TStringList.Create;
+            lstKodiUrl.Add(FFilmUrl);
+            stKODIPath:=MainForm.PubMapRemoteToLocal(GetFullDestFolder());
+            CreateDirUTF8(stKODIPath);
+            stKODIPath:=stKODIPath+'\'
+              +AnsiLeftStr(edSaveAs.Text, LastDelimiter('.',edSaveAs.Text))+'nfo';
+            lstKodiUrl.SaveToFile(UTF8ToSys(stKODIPath));
+            lstKodiUrl.Free;
+          end;
           Result:=True;
           AppNormal;
         end;
@@ -7610,6 +7649,11 @@ begin
       end;
     end;
   end;
+end;
+
+function TMainForm.PubMapRemoteToLocal(const RemotePath: string): string;
+begin
+  Result:=MapRemoteToLocal(RemotePath);
 end;
 
 procedure TMainForm.UpdateUIRpcVersion(RpcVersion: integer);

@@ -1,6 +1,6 @@
 {*************************************************************************************
   This file is part of Transmission Remote GUI.
-  Copyright (c) 2008-2019 by Yury Sidorov and Transmission Remote GUI working group.
+  Copyright (c) 2008-2014 by Yury Sidorov.
 
   Transmission Remote GUI is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,15 +24,15 @@ unit About;
 interface
 
 uses
-  BaseForm, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls, ExtCtrls, ButtonPanel, lclversion,
-    ssl_openssl, ssl_openssl_lib;
+  BaseForm, Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs, StdCtrls, ComCtrls, ExtCtrls, ButtonPanel,
+    ssl_openssl, ssl_openssl_lib, resource, versiontypes, versionresource;
 
 resourcestring
   SErrorCheckingVersion = 'Error checking for new version.';
   SNewVersionFound = 'A new version of %s is available.' + LineEnding +
-                    'Your current version: %s' + LineEnding +
-                    'The new version: %s' + LineEnding + LineEnding +
-                    'Do you wish to open the Downloads web page?';
+                     'Your current version: %s' + LineEnding +
+                     'The new version: %s' + LineEnding + LineEnding +
+                     'Do you wish to open the Downloads web page?';
   SLatestVersion = 'No updates have been found.' + LineEnding + 'You are running the latest version of %s.';
 
 type
@@ -43,9 +43,11 @@ type
     Bevel1: TBevel;
     Buttons: TButtonPanel;
     edLicense: TMemo;
+    imgDonate: TImage;
     imgTransmission: TImage;
     imgSynapse: TImage;
     imgLazarus: TImage;
+    txDonate: TLabel;
     txHomePage: TLabel;
     txAuthor: TLabel;
     txVersion: TLabel;
@@ -53,7 +55,6 @@ type
     Page: TPageControl;
     tabAbout: TTabSheet;
     tabLicense: TTabSheet;
-    txVersFPC: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure imgDonateClick(Sender: TObject);
     procedure imgLazarusClick(Sender: TObject);
@@ -63,7 +64,7 @@ type
     { private declarations }
   public
     { public declarations }
-  end;
+  end; 
 
 procedure CheckNewVersion(Async: boolean = True);
 procedure GoHomePage;
@@ -93,6 +94,43 @@ type
 var
   CheckVersionThread: TCheckVersionThread;
 
+  FUNCTION resourceVersionInfo: STRING;
+
+   (* Unlike most of AboutText (below), this takes significant activity at run-    *)
+   (* time to extract version/release/build numbers from resource information      *)
+   (* appended to the binary.                                                      *)
+
+   VAR     Stream: TResourceStream;
+           vr: TVersionResource;
+           fi: TVersionFixedInfo;
+
+   BEGIN
+     RESULT:= '';
+     TRY
+
+   (* This raises an exception if version info has not been incorporated into the  *)
+   (* binary (Lazarus Project -> Project Options -> Version Info -> Version        *)
+   (* numbering).                                                                  *)
+
+       Stream:= TResourceStream.CreateFromID(HINSTANCE, 1, PChar(RT_VERSION));
+       TRY
+         vr:= TVersionResource.Create;
+         TRY
+           vr.SetCustomRawDataStream(Stream);
+           fi:= vr.FixedInfo;
+           RESULT := IntToStr(fi.FileVersion[0]) + '.' + IntToStr(fi.FileVersion[1]) +
+                  '.' + IntToStr(fi.FileVersion[2]) + '.' + IntToStr(fi.FileVersion[3]);
+           vr.SetCustomRawDataStream(nil)
+         FINALLY
+           vr.Free
+         END
+       FINALLY
+         Stream.Free
+       END
+     EXCEPT
+     END
+   END { resourceVersionInfo } ;
+
 procedure CheckNewVersion(Async: boolean);
 begin
   if CheckVersionThread <> nil then
@@ -112,14 +150,15 @@ end;
 procedure GoHomePage;
 begin
   AppBusy;
-  OpenURL('https://github.com/transmission-remote-gui/transgui/releases');
+  OpenURL('https://github.com/overm/transmission-gui/releases');
   AppNormal;
 end;
 
 procedure GoGitHub;
 begin
   AppBusy;
-  OpenURL('https://github.com/transmission-remote-gui/transgui');
+  //OpenURL('http://code.google.com/p/transmisson-remote-gui/wiki/Donate');
+  //OpenURL('https://github.com/xorkrus/transmisson-remote-gui');
   AppNormal;
 end;
 
@@ -133,17 +172,17 @@ begin
     exit;
   end;
 
-  if GetIntVersion(AppVersion) >= GetIntVersion(FVersion)  then begin
+  if GetIntVersion(resourceVersionInfo()) >= GetIntVersion(FVersion)  then begin
     MessageDlg(Format(SLatestVersion, [AppName]), mtInformation, [mbOK], 0);
     exit;
   end;
 
-  if MessageDlg(Format(SNewVersionFound, [AppName, AppVersion, FVersion]), mtConfirmation, mbYesNo, 0) <> mrYes then
+  if MessageDlg(Format(SNewVersionFound, [AppName, resourceVersionInfo(), FVersion]), mtConfirmation, mbYesNo, 0) <> mrYes then
     exit;
 
   Application.ProcessMessages;
   AppBusy;
-  OpenURL('https://github.com/transmission-remote-gui/transgui/releases');
+  OpenURL('https://github.com/leonsoft-kras/transmisson-remote-gui/releases');
   AppNormal;
 end;
 
@@ -180,7 +219,7 @@ begin
           FHttp.ProxyUser:=RpcObj.Http.ProxyUser;
           FHttp.ProxyPass:=RpcObj.Http.ProxyPass;
         end;
-        if FHttp.HTTPMethod('GET', 'https://raw.githubusercontent.com/transmission-remote-gui/transgui/master/VERSION.txt') then begin
+        if FHttp.HTTPMethod('GET', 'https://raw.githubusercontent.com/leonsoft-kras/transmisson-remote-gui/master/VERSION.txt') then begin
           if FHttp.ResultCode = 200 then begin
             SetString(FVersion, FHttp.Document.Memory, FHttp.Document.Size);
             FVersion:=Trim(FVersion);
@@ -196,7 +235,7 @@ begin
     except
       FError:=Exception(ExceptObject).Message;
     end;
-    if (FError <> '') or (GetIntVersion(FVersion) > GetIntVersion(AppVersion)) or Suspended then
+    if (FError <> '') or (GetIntVersion(FVersion) > GetIntVersion(resourceVersionInfo())) or Suspended then
       if Suspended then
         CheckResult
       else
@@ -226,16 +265,15 @@ var
   s: string;
 {$endif lclcarbon}
 begin
-  bidiMode := GetBiDi();
+
+  bidiMode := GetBiDi(); // PETROV
+
   txAppName.Font.Size:=Font.Size + 2;
   txHomePage.Font.Size:=Font.Size;
   BorderStyle:=bsSizeable;
   txAppName.Caption:=AppName;
-  txVersion.Caption:=Format(txVersion.Caption, [AppVersion]);
+  txVersion.Caption:=Format(txVersion.Caption, [resourceVersionInfo()]);
   Page.ActivePageIndex:=0;
-
-  txVersFPC.caption := 'Fpc : ' + {$I %FPCVERSION%} + '   Lazarus : ' +lcl_version;
-
 {$ifdef lclcarbon}
   s:=edLicense.Text;
   edLicense.Text:='';
@@ -253,7 +291,7 @@ end;
 procedure TAboutForm.imgLazarusClick(Sender: TObject);
 begin
   AppBusy;
-  OpenURL('https://www.lazarus-ide.org');
+  OpenURL('http://www.lazarus.freepascal.org');
   AppNormal;
 end;
 
@@ -261,3 +299,4 @@ initialization
   {$I about.lrs}
 
 end.
+

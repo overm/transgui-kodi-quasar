@@ -37,6 +37,7 @@ type
     cbLanguage: TComboBox;
     cbLangLeftRight: TComboBox;
     cbLinksFromClipboard: TCheckBox;
+    cbCreateFolder: TCheckBox;
     cbShowAddTorrentWindow: TCheckBox;
     cbTrayClose: TCheckBox;
     cbTrayIconAlways: TCheckBox;
