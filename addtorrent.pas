@@ -25,8 +25,9 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Spin, VarGrid, Grids, ButtonPanel, ExtCtrls, Buttons, BaseForm,
-  varlist, fpjson, StrUtils, DateUtils, LazUTF8, simpleinternet, xquery, fphttpclient;
+  StdCtrls, Spin, VarGrid, Grids, ButtonPanel, ExtCtrls, Buttons, ComCtrls,
+  BaseForm, varlist, fpjson, StrUtils, DateUtils, LazUTF8, simpleinternet,
+  xquery, fphttpclient;
 
 resourcestring
   SSize = 'Size';
@@ -57,6 +58,7 @@ type
     DiskSpaceTimer: TTimer;
     gbFilmSearch: TGroupBox;
     imFilmSearch: TImage;
+    pbFilmSearch: TProgressBar;
     txFilmSearch: TLabel;
     txSaveAs: TLabel;
     txSaveAs1: TLabel;
@@ -214,6 +216,20 @@ destructor TFilesTree.Destroy;
 begin
   inherited Destroy;
 end;
+
+
+type
+  WebParseThread=class(TThread)
+private
+  position:integer;
+  parent:TAddTorrentForm;
+  url, seacher, filmName, filmYear, filmQuery: string;
+  imageStream : TMemoryStream;
+protected
+  procedure ShowResult;
+  procedure Execute; override;
+end;
+
 
 function TFilesTree.IsFolder(ARow: integer): boolean;
 begin
@@ -1023,25 +1039,67 @@ begin
   end;
 end;
 
+var  parser: WebParseThread;
 
 procedure TAddTorrentForm.btRefreshClick(Sender: TObject);
-var link: IXQValue;
-  i: integer;
-  url, seacher: string;
-  imageStream : TMemoryStream;
+begin
+  FFilmUrl:='';
+
+  if pbFilmSearch.Visible then
+  begin
+    self.BeginFormUpdate;
+    pbFilmSearch.Visible:=false;
+    txFilmSearchName.Cursor:= TCursor(0);
+    txFilmSearchName.Font.Color:= clBlack;
+    txFilmSearchName.Font.Underline := false;
+    txFilmSearchName.Hint:='';
+    txFilmSearchName.Caption:='Original name: ';
+    txFilmSearchYear.Caption:='Year: ';
+    imFilmSearch.Picture.Clear;
+    edFilmQuery.Enabled:=true;
+    btRefresh.Caption:='Refresh';
+    self.EndFormUpdate;
+    try
+      parser.Suspend;
+      parser.Terminate;
+    except;
+    end;
+  end
+  else
+  begin
+    parser:= WebParseThread.Create(true);
+    parser.parent:= self;
+    parser.filmQuery:= edFilmQuery.Text;
+    self.BeginFormUpdate;
+    edFilmQuery.Enabled:=false;
+    pbFilmSearch.Position:=0;
+    btRefresh.Caption:='Abort';
+    pbFilmSearch.Visible:=true;
+    self.EndFormUpdate;
+    parser.Start;
+  end;
+end;
+
+procedure WebParseThread.Execute;
+var
+  i:integer;
+  link: IXQValue;
   cli: TFPHTTPClient;
 
 begin
   i:=0;
   url:='';
-  FFilmUrl:='';
+  filmName:='';
+  filmYear:='';
   seacher:='';
+
 
   //set user agent (fails without it)
   //defaultInternetConfiguration.userAgent:='curl/7.21.0 (i686-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18';
-
+  position:=10;
+  Synchronize(@ShowResult);
   try
-    for link in  process('https://www.google.com/search?q=site:www.themoviedb.org+'+ReplaceStr(ReplaceStr(edFilmQuery.Text, ' ', '+'), '&', '%26'),
+    for link in  process('https://www.google.com/search?q=site:www.themoviedb.org+'+ReplaceStr(ReplaceStr(filmQuery, ' ', '+'), '&', '%26'),
         '//a[contains(@href,''https://www.themoviedb.org/movie/'')]/@href') do
       begin
         seacher:='G';
@@ -1055,7 +1113,9 @@ begin
 
   try
   if url = '' then
-    for link in  process('https://yandex.ru/search/?site=www.themoviedb.org&text='+ReplaceStr(edFilmQuery.Text, '&', '%26'), '//*[@class=''content__left'']//a[starts-with(@href,''https://www.themoviedb.org/movie/'')]/@href') do
+   position:=25;
+   Synchronize(@ShowResult);
+    for link in  process('https://yandex.ru/search/?site=www.themoviedb.org&text='+ReplaceStr(filmQuery, '&', '%26'), '//*[@class=''content__left'']//a[starts-with(@href,''https://www.themoviedb.org/movie/'')]/@href') do
     begin
       seacher:='Y';
       url:=link.toString;
@@ -1064,24 +1124,24 @@ begin
   except
   end;
 
+  position:=50;
+  Synchronize(@ShowResult);
 
     if url <> '' then
      begin
-       txFilmSearchName.Cursor:= TCursor(-21);
-       txFilmSearchName.Font.Color:= clBlue;
-       txFilmSearchName.Font.Underline := true;
-       txFilmSearchName.Hint:=url;
        i:=0;
-       FFilmUrl:=url;
        for link in  process(url, '//*[@id=''main'']//*[@class=''title'']/span/a/h2/text() | //*[@id=''main'']//*[@class=''release_date'']/text() | /html/head/meta[@property=''og:image''][1]/@content') do
          begin
             if i = 1 then
-              txFilmSearchName.Caption:=seacher +'  Original name: ' + link.toString;
+              filmName:=seacher +'  Original name: ' + link.toString;
             if i = 2 then
-              txFilmSearchYear.Caption:='Year: ' + ReplaceStr(ReplaceStr(link.toString, ')', ''), '(', '');
+              filmYear:='Year: ' + ReplaceStr(ReplaceStr(link.toString, ')', ''), '(', '');
             if i = 0 then
             begin
               try
+
+                position:=75;
+                Synchronize(@ShowResult);
 
                 imageStream := TMemoryStream.Create;
 
@@ -1089,7 +1149,6 @@ begin
                 cli.AddHeader('User-Agent','Mozilla/5.0 (compatible; fpweb)');
                 cli.SimpleGet(ReplaceText(link.toString, 'https://', 'http://'), imageStream);
                 imageStream.Position:=0;
-                imFilmSearch.Picture.LoadFromStream(imageStream);
               except
               end;
             end;
@@ -1097,20 +1156,44 @@ begin
               break;
             i:=i+1;
          end;
+     end;
+  position:=100;
+  Synchronize(@ShowResult);
+end;
+
+procedure WebParseThread.ShowResult;
+begin
+  parent.pbFilmSearch.Position:=position;
+  if position = 100 then
+  begin
+    parent.pbFilmSearch.Visible:=false;
+    if url <> '' then
+     begin
+       parent.txFilmSearchName.Cursor:= TCursor(-21);
+       parent.txFilmSearchName.Font.Color:= clBlue;
+       parent.txFilmSearchName.Font.Underline := true;
+       parent.txFilmSearchName.Hint:=url;
+       parent.FFilmUrl:=url;
+       parent.txFilmSearchName.Caption:=filmName;
+       parent.txFilmSearchYear.Caption:=filmYear;
+       parent.imFilmSearch.Picture.LoadFromStream(imageStream);
      end
-   else
-   begin
-     txFilmSearchName.Cursor:= TCursor(0);
-     txFilmSearchName.Font.Color:= clBlack;
-     txFilmSearchName.Font.Underline := false;
-     txFilmSearchName.Hint:='';
-     txFilmSearchName.Caption:='Original name: ';
-     txFilmSearchYear.Caption:='Year: ';
+     else
+     begin
+       parent.txFilmSearchName.Cursor:= TCursor(0);
+       parent.txFilmSearchName.Font.Color:= clBlack;
+       parent.txFilmSearchName.Font.Underline := false;
+       parent.txFilmSearchName.Hint:='';
+       parent.txFilmSearchName.Caption:='Original name: ';
+       parent.txFilmSearchYear.Caption:='Year: ';
+       parent.imFilmSearch.Picture.Clear;
+     end;
+     parent.edFilmQuery.Enabled:=true;
+     parent.btRefresh.Caption:='Refresh';
+  end;
+//parent.txFilmSearchName.Caption:='Original name: ' + IntToStr(results);
+   //imFilmSearch.Picture.LoadFromStream(imageStream);
 
-
-
-
-   end;
 end;
 
 function TAddTorrentForm.GetFullDestFolder(): string;

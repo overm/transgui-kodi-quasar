@@ -117,7 +117,7 @@ inherited AddTorrentForm: TAddTorrentForm
       Height = 15
       Hint = 'for example: *.avi *.mkv'
       Top = 40
-      Width = 59
+      Width = 57
       Caption = 'Template:  '
       ParentColor = False
       ParentShowHint = False
@@ -384,8 +384,17 @@ inherited AddTorrentForm: TAddTorrentForm
       Anchors = [akTop, akRight]
       Stretch = True
     end
+    object pbFilmSearch: TProgressBar
+      Left = 320
+      Height = 20
+      Top = 0
+      Width = 89
+      Anchors = [akTop, akRight]
+      TabOrder = 2
+      Visible = False
+    end
   end
-  object cbFilmSearch: TCheckBox[4]
+  object cbFilmSearch: TCheckBox[5]
     Left = 16
     Height = 19
     Top = 189
@@ -396,7 +405,7 @@ inherited AddTorrentForm: TAddTorrentForm
     State = cbChecked
     TabOrder = 4
   end
-  object DiskSpaceTimer: TTimer[5]
+  object DiskSpaceTimer: TTimer[6]
     Enabled = False
     OnTimer = DiskSpaceTimerTimer
     left = 16
