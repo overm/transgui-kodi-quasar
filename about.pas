@@ -150,15 +150,14 @@ end;
 procedure GoHomePage;
 begin
   AppBusy;
-  OpenURL('https://github.com/overm/transmission-gui/releases');
+  OpenURL('https://github.com/overm/transgui-kodi-quasar/wiki');
   AppNormal;
 end;
 
 procedure GoGitHub;
 begin
   AppBusy;
-  //OpenURL('http://code.google.com/p/transmisson-remote-gui/wiki/Donate');
-  //OpenURL('https://github.com/xorkrus/transmisson-remote-gui');
+  OpenURL('https://github.com/overm/transgui-kodi-quasar');
   AppNormal;
 end;
 
@@ -182,7 +181,7 @@ begin
 
   Application.ProcessMessages;
   AppBusy;
-  OpenURL('https://github.com/leonsoft-kras/transmisson-remote-gui/releases');
+  OpenURL('https://github.com/overm/transgui-kodi-quasar/releases');
   AppNormal;
 end;
 
@@ -219,7 +218,7 @@ begin
           FHttp.ProxyUser:=RpcObj.Http.ProxyUser;
           FHttp.ProxyPass:=RpcObj.Http.ProxyPass;
         end;
-        if FHttp.HTTPMethod('GET', 'https://raw.githubusercontent.com/leonsoft-kras/transmisson-remote-gui/master/VERSION.txt') then begin
+        if FHttp.HTTPMethod('GET', 'https://raw.githubusercontent.com/overm/transgui-kodi-quasar/master/VERSION.txt') then begin
           if FHttp.ResultCode = 200 then begin
             SetString(FVersion, FHttp.Document.Memory, FHttp.Document.Size);
             FVersion:=Trim(FVersion);
@@ -250,7 +249,7 @@ end;
 procedure TAboutForm.imgSynapseClick(Sender: TObject);
 begin
   AppBusy;
-  OpenURL('http://synapse.ararat.cz');
+//  OpenURL('http://synapse.ararat.cz');
   AppNormal;
 end;
 

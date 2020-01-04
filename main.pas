@@ -2839,17 +2839,22 @@ begin
 
           Ini.WriteInteger(IniSec, 'PeerLimit', edPeerLimit.Value);
           SaveDownloadDirs(cbDestFolder, 'LastDownloadDir');
-            if (cbFilmSearch.Checked) and (FFilmUrl <> '') then
-          begin
-            lstKodiUrl:= TStringList.Create;
-            lstKodiUrl.Add(FFilmUrl);
-            stKODIPath:=MainForm.PubMapRemoteToLocal(GetFullDestFolder());
-            CreateDirUTF8(stKODIPath);
-            stKODIPath:=stKODIPath+'\'
-              +AnsiLeftStr(edSaveAs.Text, LastDelimiter('.',edSaveAs.Text))+'nfo';
-            lstKodiUrl.SaveToFile(UTF8ToSys(stKODIPath));
-            lstKodiUrl.Free;
-          end;
+          if (cbFilmSearch.Checked) and (FFilmUrl <> '') then
+            if Trim(FPathMap.Text) = '' then
+            begin
+              MessageDlg(sNoPathMapping, mtInformation, [mbOK], 0);
+            end
+            else
+            begin
+              lstKodiUrl:= TStringList.Create;
+              lstKodiUrl.Add(FFilmUrl);
+              stKODIPath:=MainForm.PubMapRemoteToLocal(GetFullDestFolder());
+              CreateDirUTF8(stKODIPath);
+              stKODIPath:=stKODIPath+'\'
+                +AnsiLeftStr(edSaveAs.Text, LastDelimiter('.',edSaveAs.Text))+'nfo';
+              lstKodiUrl.SaveToFile(UTF8ToSys(stKODIPath));
+              lstKodiUrl.Free;
+            end;
           Result:=True;
           AppNormal;
         end;
