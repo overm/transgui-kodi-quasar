@@ -1073,7 +1073,7 @@ begin
        txFilmSearchName.Hint:=url;
        i:=0;
        FFilmUrl:=url;
-       for link in  process(url, '//*[@id=''main'']//*[@class=''title'']/h2/a/text() | //*[@id=''main'']//*[@class=''title'']/h2/a/span | /html/head/meta[@property=''og:image''][1]/@content') do
+       for link in  process(url, '//*[@id=''main'']//*[@class=''title'']/span/a/h2/text() | //*[@id=''main'']//*[@class=''release_date'']/text() | /html/head/meta[@property=''og:image''][1]/@content') do
          begin
             if i = 1 then
               txFilmSearchName.Caption:=seacher +'  Original name: ' + link.toString;
