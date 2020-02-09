@@ -40,6 +40,7 @@ type
   { TAddTorrentForm }
 
   TAddTorrentForm = class(TBaseForm)
+    BtQuasar: TBitBtn;
     DelButton: TBitBtn;
     btRefresh: TButton;
     btSelectAll: TButton;
@@ -70,6 +71,7 @@ type
     lvFiles: TVarGrid;
     txDestFolder: TLabel;
     procedure btBrowseClick(Sender: TObject);
+    procedure BtQuasarClick(Sender: TObject);
     procedure btRefreshClick(Sender: TObject);
     procedure btSelectAllClick(Sender: TObject);
     procedure btSelectNoneClick(Sender: TObject);
@@ -99,7 +101,7 @@ type
   public
     OrigCaption: string;
     Extension : string;
-    FFilmUrl: string;
+    FFilmUrl, TorrentFile: string;
     property FilesTree: TFilesTree read FTree;
   end;
 
@@ -1077,6 +1079,25 @@ begin
     pbFilmSearch.Visible:=true;
     self.EndFormUpdate;
     parser.Start;
+  end;
+end;
+
+procedure TAddTorrentForm.BtQuasarClick(Sender: TObject);
+Var
+  Respo: TStringStream;
+  S : String;
+begin
+  With TFPHttpClient.Create(Nil) do
+  try
+    Respo := TStringStream.Create('');
+    FileFormPost('http://192.168.25.7:65220/torrents/add','file',TorrentFile,Respo);
+    S := Respo.DataString;
+    Respo.Destroy;
+    MessageDlg('OK: Quasar torrent added:' + S, mtInformation, [mbOK], 0);
+    //Self.Buttons.CancelButton.Click;
+  except
+    On E: Exception Do
+        MessageDlg('Error: Quasar using: ' + E.ToString, mtError, [mbOK], 0);
   end;
 end;
 

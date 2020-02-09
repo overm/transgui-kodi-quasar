@@ -2604,6 +2604,7 @@ begin
             fs.Free;
           end;
           torrent:=EncodeBase64(torrent);
+          TorrentFile:=FileName;
         end;
 
         IniSec:='AddTorrent.' + FCurConn;
