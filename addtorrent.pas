@@ -27,7 +27,7 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Spin, VarGrid, Grids, ButtonPanel, ExtCtrls, Buttons, ComCtrls,
   BaseForm, varlist, fpjson, StrUtils, DateUtils, LazUTF8, simpleinternet,
-  xquery, fphttpclient;
+  xquery, fphttpclient, LazFileUtils;
 
 resourcestring
   SSize = 'Size';
@@ -101,7 +101,8 @@ type
   public
     OrigCaption: string;
     Extension : string;
-    FFilmUrl, TorrentFile: string;
+    FFilmUrl, TorrentFile, TorrentHash: string;
+    QuazarUse : boolean;
     property FilesTree: TFilesTree read FTree;
   end;
 
@@ -1085,19 +1086,64 @@ end;
 procedure TAddTorrentForm.BtQuasarClick(Sender: TObject);
 Var
   Respo: TStringStream;
-  S : String;
+  step, con, host, stKODIPath, resp : String;
+  link: IXQValue;
+  lstKodiUrl: TStringList;
 begin
+  stKODIPath:=MainForm.PubMapRemoteToLocal(GetFullDestFolder());
+  if stKODIPath = '' then
+  begin
+     MessageDlg(sNoPathMapping, mtInformation, [mbOK], 0);
+     exit;
+  end;
   With TFPHttpClient.Create(Nil) do
   try
+    con:='Connection.' + MainForm.FCurConn;
+    if not Ini.SectionExists(con) then
+      con:='Connection';
+    host:=Ini.ReadString(con, 'Host', '');
+
+    step:= 'adding torrent';
     Respo := TStringStream.Create('');
-    FileFormPost('http://192.168.25.7:65220/torrents/add','file',TorrentFile,Respo);
-    S := Respo.DataString;
+    FileFormPost('http://'+host+':65220/torrents/add','file',TorrentFile,Respo);
+    resp := Respo.DataString;
     Respo.Destroy;
-    MessageDlg('OK: Quasar torrent added:' + S, mtInformation, [mbOK], 0);
-    //Self.Buttons.CancelButton.Click;
+
+    //curl --data-binary '{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}' -H 'content-type: application/json;' http://play-box:8080/jsonrpc
+
+
+    step:= 'closing kodi window';
+    AddHeader('Content-Type', 'application/json');
+    resp := SimpleFormPost('http://'+host+':8080/jsonrpc', '{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}');
+
+    step:= 'writing nfo files';
+    lstKodiUrl:= TStringList.Create;
+    lstKodiUrl.Add(FFilmUrl);
+    CreateDirUTF8(stKODIPath);
+    stKODIPath:=stKODIPath+'\'
+      +AnsiLeftStr(edSaveAs.Text, LastDelimiter('.',edSaveAs.Text));
+    lstKodiUrl.SaveToFile(UTF8ToSys(stKODIPath+'nfo'));
+    lstKodiUrl.Clear;
+
+    step:= 'writing strm file';
+    lstKodiUrl.Add('plugin://plugin.video.elementum/play?resume=' + TorrentHash);
+    lstKodiUrl.SaveToFile(UTF8ToSys(stKODIPath+'strm'));
+    lstKodiUrl.Clear;
+
+    step:= 'refreshing kodi library';
+    AddHeader('Content-Type', 'application/json');
+    resp := SimpleFormPost('http://'+host+':8080/jsonrpc', '{ "jsonrpc": "2.0", "method": "VideoLibrary.Scan", "id": "mybash"}');
+
+
+    lstKodiUrl.Free;
+
+    MessageDlg('The movie was added to KODI with Quasar.', mtInformation, [mbOK], 0);
+
+    Buttons.CloseButton.Click;
+
   except
     On E: Exception Do
-        MessageDlg('Error: Quasar using: ' + E.ToString, mtError, [mbOK], 0);
+        MessageDlg('Quasar Error while '+ step + ': ' + E.ToString, mtError, [mbOK], 0);
   end;
 end;
 

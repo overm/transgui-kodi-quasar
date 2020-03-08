@@ -532,7 +532,10 @@ inherited AddTorrentForm: TAddTorrentForm
         00000000000000000000000000000000000300000002CDCDCD00FFFFFF003B3B
         3B00000000000000000000000000000000000000000000000000
       }
+      GlyphShowMode = gsmAlways
       OnClick = BtQuasarClick
+      ParentShowHint = False
+      ShowHint = True
       TabOrder = 3
     end
   end

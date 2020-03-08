@@ -659,7 +659,6 @@ type
     FLastPieces: string;
     FLastPieceCount: integer;
     FLastDone: double;
-    FCurConn: string;
     FPathMap: TStringList;
     FLastFilerIndex: integer;
     FFilterChanged: boolean;
@@ -761,6 +760,7 @@ type
     function SelectTorrent(TorrentId, TimeOut: integer): integer;
     procedure OpenCurrentTorrent(OpenFolderOnly: boolean; UserDef: boolean=false);
   public
+    FCurConn: string;
     FCreateFolder: boolean;
     procedure FillTorrentsList(list: TJSONArray);
     procedure FillPeersList(list: TJSONArray);
@@ -2678,7 +2678,7 @@ begin
 
         DoRefresh(True);
 
-        args:=RpcObj.RequestInfo(id, ['files','maxConnectedPeers','name','metadataPercentComplete']);
+        args:=RpcObj.RequestInfo(id, ['files','maxConnectedPeers','name','metadataPercentComplete', 'hashString']);
         if args = nil then begin
           CheckStatus(False);
           exit;
@@ -2688,6 +2688,7 @@ begin
           if t.Count = 0 then
             raise Exception.Create(sUnableGetFilesList);
 
+          TorrentHash := UTF8Encode(t.Objects[0].Strings['hashString']);
           OldName:=UTF8Encode(t.Objects[0].Strings['name']);
           edSaveAs.Caption:=OldName;
           edSaveAs.Caption := ExcludeInvalidChar(edSaveAs.Caption); // petrov - Exclude prohibited characters
