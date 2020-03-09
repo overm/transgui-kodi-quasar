@@ -1086,7 +1086,7 @@ end;
 procedure TAddTorrentForm.BtQuasarClick(Sender: TObject);
 Var
   Respo: TStringStream;
-  step, con, host, stKODIPath : String;
+  step, con, host, resp, stKODIPath : String;
   reqJSON: TStringStream;
   lstKodiUrl: TStringList;
 begin
@@ -1096,20 +1096,20 @@ begin
      MessageDlg(sNoPathMapping, mtInformation, [mbOK], 0);
      exit;
   end;
-  With TFPHttpClient.Create(Nil) do
   try
     con:='Connection.' + MainForm.FCurConn;
     if not Ini.SectionExists(con) then
       con:='Connection';
     host:=Ini.ReadString(con, 'Host', '');
 
-    step:= 'adding torrent';
-    Respo := TStringStream.Create('');
-    FileFormPost('http://'+host+':65220/torrents/add','file',TorrentFile,Respo);
-    //resp := Respo.DataString;
-    Respo.Destroy;
-
-
+    With TFPHttpClient.Create(Nil) do
+    begin
+      step:= 'adding torrent';
+      Respo := TStringStream.Create('');
+      FileFormPost('http://'+host+':65220/torrents/add','file',TorrentFile,Respo);
+      resp := Respo.DataString;
+      Respo.Destroy;
+    end;
 
 
     step:= 'writing nfo files';
@@ -1125,20 +1125,22 @@ begin
     lstKodiUrl.Add('plugin://plugin.video.elementum/play?resume=' + TorrentHash);
     lstKodiUrl.SaveToFile(UTF8ToSys(stKODIPath+'strm'));
     lstKodiUrl.Clear;
-
-    step:= 'closing kodi window';
-    AddHeader('Content-Type', 'application/json');
-    ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}');
-    RequestBody:= ReqJson;
-    Post('http://'+host+':8080/jsonrpc');
-
-    step:= 'refreshing kodi library';
-    ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "VideoLibrary.Scan", "id": "mybash"}');
-    RequestBody:= ReqJson;
-    Post('http://'+host+':8080/jsonrpc');
-
-
     lstKodiUrl.Free;
+
+    With TFPHttpClient.Create(Nil) do
+    begin
+      step:= 'closing kodi window';
+      AddHeader('Content-Type', 'application/json');
+      ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}');
+      RequestBody:= ReqJson;
+      Post('http://'+host+':8080/jsonrpc');
+
+      step:= 'refreshing kodi library';
+      ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "VideoLibrary.Scan", "id": "mybash"}');
+      RequestBody:= ReqJson;
+      Post('http://'+host+':8080/jsonrpc');
+    end;
+
 
     MessageDlg('The movie was added to KODI with Quasar.', mtInformation, [mbOK], 0);
 
