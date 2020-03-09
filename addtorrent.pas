@@ -1086,8 +1086,8 @@ end;
 procedure TAddTorrentForm.BtQuasarClick(Sender: TObject);
 Var
   Respo: TStringStream;
-  step, con, host, stKODIPath, resp : String;
-  link: IXQValue;
+  step, con, host, stKODIPath : String;
+  reqJSON: TStringStream;
   lstKodiUrl: TStringList;
 begin
   stKODIPath:=MainForm.PubMapRemoteToLocal(GetFullDestFolder());
@@ -1106,15 +1106,11 @@ begin
     step:= 'adding torrent';
     Respo := TStringStream.Create('');
     FileFormPost('http://'+host+':65220/torrents/add','file',TorrentFile,Respo);
-    resp := Respo.DataString;
+    //resp := Respo.DataString;
     Respo.Destroy;
 
-    //curl --data-binary '{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}' -H 'content-type: application/json;' http://play-box:8080/jsonrpc
 
 
-    step:= 'closing kodi window';
-    AddHeader('Content-Type', 'application/json');
-    resp := SimpleFormPost('http://'+host+':8080/jsonrpc', '{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}');
 
     step:= 'writing nfo files';
     lstKodiUrl:= TStringList.Create;
@@ -1130,9 +1126,16 @@ begin
     lstKodiUrl.SaveToFile(UTF8ToSys(stKODIPath+'strm'));
     lstKodiUrl.Clear;
 
-    step:= 'refreshing kodi library';
+    step:= 'closing kodi window';
     AddHeader('Content-Type', 'application/json');
-    resp := SimpleFormPost('http://'+host+':8080/jsonrpc', '{ "jsonrpc": "2.0", "method": "VideoLibrary.Scan", "id": "mybash"}');
+    ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}');
+    RequestBody:= ReqJson;
+    Post('http://'+host+':8080/jsonrpc');
+
+    step:= 'refreshing kodi library';
+    ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "VideoLibrary.Scan", "id": "mybash"}');
+    RequestBody:= ReqJson;
+    Post('http://'+host+':8080/jsonrpc');
 
 
     lstKodiUrl.Free;
