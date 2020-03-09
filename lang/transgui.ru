@@ -380,3 +380,4 @@ Right->Left (Reading Only)=Справа налево (только чтение)
 Host not found=Хост не найден
 User Menu=Меню пользователя
 Unauthorized User=Неразрешенный пользователь
+The movie was added to KODI with Quasar.=Кино добавлено в Kodi в Quasar
