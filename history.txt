@@ -1,3 +1,6 @@
+5.18.1 (Mar 09, 2020)
+ - Add Quasar(Elementum) support
+ - Fixed OpenSSL lib
 5.18.0 (Oct 11, 2019)
  - Enable smart linking (#1252)
  - Add basic snap package files (#1109)
