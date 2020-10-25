@@ -247,6 +247,16 @@ protected
 end;
 
 
+type
+  CancelButtonThread=class(TThread)
+private
+  stop : boolean;
+  host : String;
+protected
+  procedure Execute; override;
+end;
+
+
 function TFilesTree.IsFolder(ARow: integer): boolean;
 begin
   Result:=VarIsEmpty(FGrid.Items[idxFileId, ARow]);
@@ -1060,6 +1070,7 @@ begin
 end;
 
 var  parser: WebParseThread;
+var  closer: CancelButtonThread;
 
 procedure TAddTorrentForm.btRefreshClick(Sender: TObject);
 begin
@@ -1119,6 +1130,12 @@ begin
       con:='Connection';
     host:=Ini.ReadString(con, 'Host', '');
 
+    begin
+      closer:= CancelButtonThread.Create(true);
+      closer.host:= host;
+      closer.Start;
+    end;
+
     With TFPHttpClient.Create(Nil) do
     begin
       step:= 'adding torrent';
@@ -1126,6 +1143,7 @@ begin
       FileFormPost('http://'+host+':65220/torrents/add','file',TorrentFile,Respo);
       resp := Respo.DataString;
       Respo.Destroy;
+      closer.stop:=true;
     end;
 
 
@@ -1146,13 +1164,8 @@ begin
 
     With TFPHttpClient.Create(Nil) do
     begin
-      step:= 'closing kodi window';
-      AddHeader('Content-Type', 'application/json');
-      ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}');
-      RequestBody:= ReqJson;
-      Post('http://'+host+':8080/jsonrpc');
-
       step:= 'refreshing kodi library';
+      AddHeader('Content-Type', 'application/json');
       ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "VideoLibrary.Scan", "id": "mybash"}');
       RequestBody:= ReqJson;
       Post('http://'+host+':8080/jsonrpc');
@@ -1166,6 +1179,28 @@ begin
   except
     On E: Exception Do
         MessageDlg('Quasar Error while '+ step + ': ' + E.ToString, mtError, [mbOK], 0);
+  end;
+end;
+procedure CancelButtonThread.Execute;
+Var
+  reqJSON: TStringStream;
+  i: integer;
+begin
+  stop:=false;
+  Sleep(1000);
+
+  for i:= 1 to 10 do
+  begin
+    If (i>1) and (stop) Then
+       Break;
+    With TFPHttpClient.Create(Nil) do
+    begin
+      AddHeader('Content-Type', 'application/json');
+      ReqJson := TStringStream.Create('{ "jsonrpc": "2.0", "method": "Input.Back", "id": "mybash"}');
+      RequestBody:= ReqJson;
+      Post('http://'+host+':8080/jsonrpc');
+    end;
+  Sleep(1000);
   end;
 end;
 
@@ -1219,7 +1254,7 @@ begin
     if url <> '' then
      begin
        i:=0;
-       for link in  process(url, '//*[@id=''main'']//*[@class=''title'']/span/a/h2/text() | //*[@id=''main'']//*[@class=''release_date'']/text() | /html/head/meta[@property=''og:image''][1]/@content') do
+       for link in  process(url, '//*[@id=''main'']//*[starts-with(@class, ''title ott_'')]//h2//a | //*[@id=''main'']//*[@class=''tag release_date'']/text() | //*[@id=''main'']//*[starts-with(@class,''image_content backdrop'')]//img/@data-src') do
          begin
             if i = 1 then
               filmName:=seacher +'  Original name: ' + link.toString;
@@ -1236,7 +1271,7 @@ begin
 
                 cli := TFPHTTPClient.Create(nil);
                 cli.AddHeader('User-Agent','Mozilla/5.0 (compatible; fpweb)');
-                cli.SimpleGet(ReplaceText(link.toString, 'https://', 'http://'), imageStream);
+                cli.SimpleGet('https:' + link.toString, imageStream);
                 imageStream.Position:=0;
               except
               end;
