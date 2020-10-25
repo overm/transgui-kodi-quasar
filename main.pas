@@ -47,7 +47,7 @@ uses
 
 const
   AppName = 'Transmission Remote GUI KODI mode';
-  AppVersion = '5.18.1';
+  AppVersion = '5.18.2';
 
 resourcestring
   sAll = 'All torrents';

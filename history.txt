@@ -1,3 +1,6 @@
+5.18.2 (Mar 09, 2020)
+ - Fixed xpath
+ - Fixed Quasar option
 5.18.1 (Mar 09, 2020)
  - Add Quasar(Elementum) support
  - Fixed OpenSSL lib
