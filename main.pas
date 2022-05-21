@@ -47,7 +47,7 @@ uses
 
 const
   AppName = 'Transmission Remote GUI KODI mode';
-  AppVersion = '5.18.2';
+  AppVersion = '5.18.3';
 
 resourcestring
   sAll = 'All torrents';
@@ -783,6 +783,8 @@ type
   public
     FCurConn: string;
     FCreateFolder: boolean;
+	FGCSSID: string;
+    FGCSSIDAPIKey: string;
     procedure FillTorrentsList(list: TJSONArray);
     procedure FillPeersList(list: TJSONArray);
     procedure FillFilesList(ATorrentId: integer; list, priorities, wanted: TJSONArray; const DownloadDir: WideString);
@@ -1717,7 +1719,9 @@ begin
   acTrackerGrouping.Checked:=Ini.ReadBool('Interface', 'TrackerGrouping', True);
   FLinksFromClipboard:=Ini.ReadBool('Interface', 'LinksFromClipboard', True);
   FCreateFolder:=Ini.ReadBool('Interface', 'CreateFolder', True);
-
+  FGCSSID:=Ini.ReadString('NetWork','GoogleCustomSearchSID','');
+  FGCSSIDAPIKey:=Ini.ReadString('NetWork','GoogleCustomSearchAPIKey','');
+  
   Application.OnActivate:=@FormActivate;
   Application.OnException:=@ApplicationPropertiesException;
 

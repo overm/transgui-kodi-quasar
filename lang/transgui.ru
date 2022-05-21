@@ -381,3 +381,4 @@ Host not found=Хост не найден
 User Menu=Меню пользователя
 Unauthorized User=Неразрешенный пользователь
 The movie was added to KODI with Quasar.=Кино добавлено в Kodi в Quasar
+Create a folder for a single file=Создавать каталог для одного файла в раздаче

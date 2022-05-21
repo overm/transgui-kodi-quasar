@@ -1216,73 +1216,116 @@ begin
   filmName:='';
   filmYear:='';
   seacher:='';
+  if MainForm.FGCSSID = '' then
+  begin
+    //set user agent (fails without it)
+    //defaultInternetConfiguration.userAgent:='curl/7.21.0 (i686-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18';
+    position:=10;
+    Synchronize(@ShowResult);
+    try
+      for link in  process('https://www.google.com/search?q=site:www.themoviedb.org+'+ReplaceStr(ReplaceStr(filmQuery, ' ', '+'), '&', '%26'),
+          '//a[contains(@href,''https://www.themoviedb.org/movie/'')]/@href') do
+        begin
+          seacher:='G';
+          url:=link.toString;
+          url:=Copy(url, Pos('https://www.themoviedb.org/movie', url), Pos('-', url) - Pos('https://www.themoviedb.org/movie', url));
+          break;
+        end;
+    except
+  //          MessageDlg(SInvalidName, mtError, [mbOK], 0);
+    end;
 
-
-  //set user agent (fails without it)
-  //defaultInternetConfiguration.userAgent:='curl/7.21.0 (i686-pc-linux-gnu) libcurl/7.21.0 OpenSSL/0.9.8o zlib/1.2.3.4 libidn/1.18';
-  position:=10;
-  Synchronize(@ShowResult);
-  try
-    for link in  process('https://www.google.com/search?q=site:www.themoviedb.org+'+ReplaceStr(ReplaceStr(filmQuery, ' ', '+'), '&', '%26'),
-        '//a[contains(@href,''https://www.themoviedb.org/movie/'')]/@href') do
+    try
+    if url = '' then
+     position:=25;
+     Synchronize(@ShowResult);
+      for link in  process('https://yandex.ru/search/?site=www.themoviedb.org&text='+ReplaceStr(filmQuery, '&', '%26'), '//*[@class=''content__left'']//a[starts-with(@href,''https://www.themoviedb.org/movie/'')]/@href') do
       begin
-        seacher:='G';
+        seacher:='Y';
         url:=link.toString;
-        url:=Copy(url, Pos('https://www.themoviedb.org/movie', url), Pos('-', url) - Pos('https://www.themoviedb.org/movie', url));
         break;
       end;
-  except
-//          MessageDlg(SInvalidName, mtError, [mbOK], 0);
-  end;
-
-  try
-  if url = '' then
-   position:=25;
-   Synchronize(@ShowResult);
-    for link in  process('https://yandex.ru/search/?site=www.themoviedb.org&text='+ReplaceStr(filmQuery, '&', '%26'), '//*[@class=''content__left'']//a[starts-with(@href,''https://www.themoviedb.org/movie/'')]/@href') do
-    begin
-      seacher:='Y';
-      url:=link.toString;
-      break;
+    except
     end;
-  except
-  end;
 
-  position:=50;
-  Synchronize(@ShowResult);
+    position:=50;
+    Synchronize(@ShowResult);
 
-    if url <> '' then
-     begin
-       i:=0;
-       for link in  process(url, '//*[@id=''main'']//*[starts-with(@class, ''title ott_'')]//h2//a | //*[@id=''main'']//*[@class=''tag release_date'']/text() | //*[@id=''main'']//*[starts-with(@class,''image_content backdrop'')]//img/@data-src') do
-         begin
-            if i = 1 then
-              filmName:=seacher +'  Original name: ' + link.toString;
-            if i = 2 then
-              filmYear:='Year: ' + ReplaceStr(ReplaceStr(link.toString, ')', ''), '(', '');
-            if i = 0 then
-            begin
-              try
+      if url <> '' then
+       begin
+         i:=0;
+         for link in  process(url, '//*[@id=''main'']//*[starts-with(@class, ''title ott_'')]//h2//a | //*[@id=''main'']//*[@class=''tag release_date'']/text() | //*[@id=''main'']//*[starts-with(@class,''image_content backdrop'')]//img/@data-src') do
+           begin
+              if i = 1 then
+                filmName:=seacher +'  Original name: ' + link.toString;
+              if i = 2 then
+                filmYear:='Year: ' + ReplaceStr(ReplaceStr(link.toString, ')', ''), '(', '');
+              if i = 0 then
+              begin
+                try
 
-                position:=75;
-                Synchronize(@ShowResult);
+                  position:=75;
+                  Synchronize(@ShowResult);
 
-                imageStream := TMemoryStream.Create;
+                  imageStream := TMemoryStream.Create;
 
-                cli := TFPHTTPClient.Create(nil);
-                cli.AddHeader('User-Agent','Mozilla/5.0 (compatible; fpweb)');
-                cli.SimpleGet('https:' + link.toString, imageStream);
-                imageStream.Position:=0;
-              except
+                  cli := TFPHTTPClient.Create(nil);
+                  cli.AddHeader('User-Agent','Mozilla/5.0 (compatible; fpweb)');
+                  cli.SimpleGet('https:' + link.toString, imageStream);
+                  imageStream.Position:=0;
+                except
+                end;
               end;
-            end;
-            if i >= 2 then
-              break;
-            i:=i+1;
+              if i >= 2 then
+                break;
+              i:=i+1;
+           end;
+       end;
+    position:=100;
+    Synchronize(@ShowResult);
+  end
+  else
+  begin
+    position:=10;
+    Synchronize(@ShowResult);
+    try
+      i:=0;
+      seacher:='GA';
+      for link in  process('https://www.googleapis.com/customsearch/v1?key='+MainForm.FGCSSIDAPIKey+'&cx='+MainForm.FGCSSID+'&q='+ReplaceStr(ReplaceStr(filmQuery, ' ', '+'), '&', '%26'),
+      '$json//items/title[1], $json//items/link[1], $json//items/pagemap[1]/cse_thumbnail/src') do
+      begin
+         if i = 0 then
+           filmName:=link.toString;
+         if i = 1 then
+           url:=link.toString;
+         if i = 2 then
+         begin
+           try
+
+             position:=75;
+             Synchronize(@ShowResult);
+             imageStream := TMemoryStream.Create;
+
+             cli := TFPHTTPClient.Create(nil);
+             cli.AddHeader('User-Agent','Mozilla/5.0 (compatible; fpweb)');
+             cli.SimpleGet(link.toString, imageStream);
+             imageStream.Position:=0;
+           except
+           end;
          end;
-     end;
-  position:=100;
-  Synchronize(@ShowResult);
+         if i >= 2 then
+           break;
+         i:=i+1;
+      end;
+      //accessToken := response.getProperty('items[0].title').toString;
+      //url:=link.toString;
+      //url:=Copy(url, Pos('https://www.themoviedb.org/movie', url), Pos('-', url) - Pos('https://www.themoviedb.org/movie', url));
+      position:=100;
+      Synchronize(@ShowResult)
+    except
+  //          MessageDlg(SInvalidName, mtError, [mbOK], 0);
+    end;
+  end;
 end;
 
 procedure WebParseThread.ShowResult;
