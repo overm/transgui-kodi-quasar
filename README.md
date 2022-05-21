@@ -2,7 +2,17 @@
 
 [![Build Status](https://travis-ci.org/transmission-remote-gui/transgui.svg?branch=master)](https://travis-ci.org/transmission-remote-gui/transgui)
 
-![Screenshot](http://i.imgur.com/XBbF4Vh.png)
+![Screenshot](https://user-images.githubusercontent.com/16693077/169628595-fd85fe86-afb4-40a7-a6ed-3ddf8ea09f15.png)
+
+For usin Googl Custom Search youshould register key and sid. To check use this:<br>
+https://www.googleapis.com/customsearch/v1?key={apikey}&cx={sid}&q=query
+
+And set it in config:
+```
+[NetWork]
+GoogleCustomSearchSID=XXXXXXXXXXXXXXXXXX
+GoogleCustomSearchAPIKey=XXXXXXXXXXXXXXXXX-XXXXXXXXXXXXXXXXX
+```
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
